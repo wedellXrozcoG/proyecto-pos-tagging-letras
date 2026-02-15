@@ -16,7 +16,7 @@ class DataCleaner:
         self.df = self.df[self.df['Release Date'] >= 1990]
 
         # 3. Muestreo de registros
-        n_samples = min(len(self.df), 100000)
+        n_samples = min(len(self.df), 50000)
         if len(self.df) > n_samples:
             self.df = self.df.sample(n=n_samples, random_state=42)
 
