@@ -2,6 +2,7 @@ from loader import SpotifyDataLoader
 import pandas as pd
 import re
 
+
 class DataCleaner:
     def __init__(self):
         loader = SpotifyDataLoader()
@@ -23,28 +24,34 @@ class DataCleaner:
         # 4. Seleccionar columnas necesarias
         self.df = self.df[['text', 'emotion', 'Release Date', 'Genre', 'Explicit', 'Popularity']]
 
-        # 5. Limpieza de texto (El método de abajo)
-        print("Limpiando etiquetas de estructura [Intro, Chorus, etc.]...")
+        # 5. Limpieza de texto
+        print("Limpiando texto...")
         self.df['text'] = self.df['text'].apply(self.limpiar_texto)
 
-        # 6. Guardar CSV
+        # 6. Eliminar filas con texto vacío o nulo después de limpiar
+        self.df = self.df[self.df['text'].notna() & (self.df['text'].str.len() > 0)]
+
+        # 7. Guardar CSV
         self.df.to_csv("../../data/processed/spotify_clean02.csv", index=False, sep=';')
         print(f"✅ CSV guardado con {len(self.df)} filas y texto limpio")
-
 
     def limpiar_texto(self, texto):
         if not isinstance(texto, str):
             return ""
 
-        # Elimina corchetes y su contenido
+        # Elimina corchetes y su contenido [Intro, Chorus, etc.]
         texto = re.sub(r'\[.*?\]', '', texto)
 
         # Elimina paréntesis (coros de fondo)
         texto = re.sub(r'\(.*?\)', '', texto)
 
+        # Limpia caracteres raros - deja solo letras, números, espacios y apóstrofes
+        texto = re.sub(r'[^\w\s\']', ' ', texto)
+
         # Limpia saltos de línea y espacios múltiples
         texto = re.sub(r'\s+', ' ', texto)
 
         return texto.strip()
+
 
 cleaner = DataCleaner()
