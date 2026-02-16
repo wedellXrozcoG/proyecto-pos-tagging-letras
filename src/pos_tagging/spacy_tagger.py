@@ -29,11 +29,18 @@ print("\n" + "="*60)
 print("¡Listo para comenzar con el POS Tagging!")
 print("="*60)
 
+# Importacion de archivo preprocessorEDA.py
+ruta_EDA = r"D:\proyecto-pos-tagging-letras\src\data"
+for r in [ruta_EDA]:
+    if r not in sys.path:
+        sys.path.append(r)
+from preprocessorEDA import preprocesador
+
 #          ***********************************Ejecución****************************************
 
-class pos_spacy:
+class pos_spacy(preprocesador):
     def __init__(self, df):
-        self.df = df
+        super().__init__(df)
 
 
     def unica_spacy(self, columna):
@@ -58,7 +65,7 @@ class pos_spacy:
         print("=" * 60 + "\n")
 
         # CREAR EL SAMPLE: Elegimos n_sample filas al azar
-        # Usamos random_state para que si lo corres de nuevo, salgan las mismas canciones
+        # Usamos random_state para que si se corre de nuevo, salgan las mismas canciones
         dataset_reducido = self.df[columna].sample(n=n_sample, random_state=42)
 
         for i, sent in enumerate(dataset_reducido):
@@ -82,7 +89,7 @@ class pos_spacy:
         print("=" * 60)
 
 
-    def pos_tag_con_progreso(self, columna, batch_size: int = 2000):
+    def multiples_spacyF2(self, columna, batch_size: int = 2000):
         resultados = []
 
         # CORRECCIÓN: Definimos 'textos' para que len(textos) no de error
@@ -105,35 +112,53 @@ class pos_spacy:
 
         return resultados
 
-    def auto_grafico_pos(self, col_txt, col_exp, n=1000):
-        # 1. Procesamiento compacto con nlp.pipe
-        sample = self.df.sample(min(n, len(self.df)))
+    def auto_grafico_pos_total(self, col_txt, col_exp):
+        import pandas as pd
+        import matplotlib.pyplot as plt
 
-        # Extraemos etiquetas ignorando basura en una sola línea
-        tags = []
-        for doc, exp in zip(nlp.pipe(sample[col_txt].astype(str)), sample[col_exp]):
-            tags.extend([{'POS': t.tag_, 'Explicit': 'Sí' if exp == 1 else 'No'}
-                            for t in doc if not t.is_punct and not t.is_space])
+        print(f"📊 Generando gráfico total basado en '{col_exp}'...")
 
-            # 2. Preparación rápida
-            df_plot = pd.DataFrame(tags)
-            top_5 = df_plot['POS'].value_counts().head(5).index
-            df_plot = df_plot[df_plot['POS'].isin(top_5)]
+        # 1. Expandir la columna 'pos_tags' (que ya debe existir en self.df)
+        # Cada fila ahora será un token individual
+        df_tokens = self.df.explode('pos_tags')
 
-            # 3. Gráfico directo
-            plt.style.use('dark_background')
-            plt.figure(figsize=(10, 5))
+        # 2. Extraer el TAG (posicion 2 de la tupla: (palabra, pos, tag))
+        # Usamos una función lambda robusta para evitar errores si hay nulos
+        df_tokens['tag_especifico'] = df_tokens['pos_tags'].apply(
+            lambda x: x[2] if isinstance(x, list) or isinstance(x, tuple) else None
+        )
 
-            ax = sns.countplot(data=df_plot, x='POS', hue='Explicit',
-                               order=top_5, palette=['#7d4a4a', '#4a6d6a'])
+        # 3. Limpiar nulos y filtrar el Top 5
+        df_tokens = df_tokens.dropna(subset=['tag_especifico'])
+        top_5_idx = df_tokens['tag_especifico'].value_counts().head(5).index
+        df_filtrado = df_tokens[df_tokens['tag_especifico'].isin(top_5_idx)]
 
-            # Etiquetas de datos (Análisis visual rápido)
-            for p in ax.patches:
-                ax.annotate(f'{int(p.get_height())}', (p.get_x() + p.get_width() / 2, p.get_height()),
-                            ha='center', va='bottom', color='white', fontweight='bold', xytext=(0, 3),
-                            textcoords='offset points')
+        # 4. Crear tabla cruzada para el apilado
+        # Como 'Explicit' es binaria (0/1), la mapeamos para que el gráfico se entienda mejor
+        tabla = pd.crosstab(df_filtrado['tag_especifico'], df_filtrado[col_exp]).loc[top_5_idx]
+        tabla.columns = ['No Explícita (0)', 'Explícita (1)']
 
-            plt.title('Top 5 Funciones Gramaticales')
-            plt.show()
+        # 5. Configuración del gráfico
+        plt.style.use('dark_background')
+        ax = tabla.plot(kind='bar', stacked=True, figsize=(12, 7),
+                        color=['#4a6d6a', '#7d4a4a'], edgecolor='white')
+
+        # Añadir los números totales sobre/dentro de las barras
+        for rect in ax.patches:
+            height = rect.get_height()
+            if height > 0:
+                ax.text(rect.get_x() + rect.get_width() / 2,
+                        rect.get_y() + height / 2,
+                        f'{int(height):,}',
+                        ha='center', va='center', color='white',
+                        fontweight='bold', fontsize=9)
+
+        plt.title(f'Análisis Morfológico Total: Top 5 Tags vs {col_exp}', fontsize=14)
+        plt.ylabel('Cantidad Total de Apariciones')
+        plt.xlabel('Etiqueta Gramatical (POS Tag)')
+        plt.xticks(rotation=0)
+        plt.legend(title='Estado Binario')
+        plt.tight_layout()
+        plt.show()
 
 
