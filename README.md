@@ -87,5 +87,5 @@ python scripts/download_dataset.py
 
 | Nombre          | GitHub         |
 |-----------------|----------------|
-| Gilary Granados | @usuario1      |
+| Gilary Granados | @Gilary001      |
 | Wedell Orozco   | @wedellXrozcoG |
