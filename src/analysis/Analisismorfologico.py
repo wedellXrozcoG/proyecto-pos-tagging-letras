@@ -36,227 +36,164 @@ class AnalisisMorfologico:
     # 1. DISTRIBUCIÓN POS COMPLETA
     # ============================================
     def distribucion_pos_completa(self, genero_objetivo=None):
-        """Muestra distribución completa. Si genero_objetivo es None, muestra todo."""
-        from collections import Counter
-        import matplotlib.pyplot as plt
+        # 1. Filtrar datos
+        datos = [r for r in self.resultados if r['genero'] == genero_objetivo] if genero_objetivo else self.resultados
+        titulo = f"Género: {genero_objetivo}" if genero_objetivo else "Todos los géneros"
 
-        # 1. Filtrar los datos por género
-        if genero_objetivo:
-            datos_filtrados = [r for r in self.resultados if r['genero'] == genero_objetivo]
-            titulo_extra = f" (Género: {genero_objetivo})"
-        else:
-            datos_filtrados = self.resultados
-            titulo_extra = " (Todos los géneros)"
-
-        if not datos_filtrados:
-            print(f"No se encontraron datos para el género: {genero_objetivo}")
-            return
-
-        # 2. Aplanar la lista de pos_tags
-        all_pos = [pos for r in datos_filtrados for pos in r['pos_tags']]
-        total_tokens = len(all_pos)
+        # 2. Contar etiquetas
+        all_pos = [pos for r in datos for pos in r['pos_tags']]
         pos_counter = Counter(all_pos)
+        total = len(all_pos)
 
-        # --- IMPRESIÓN DE TABLA ---
-        print("=" * 60)
-        print(f"1. DISTRIBUCIÓN POS COMPLETA{titulo_extra}")
-        print("=" * 60 + "\n")
-        print(f"{'Categoría POS':<15} {'Frecuencia':<12} {'Porcentaje':<12}")
-        print("-" * 60)
-
+        # 3. Mostrar Tabla
+        print(f"\n--- DISTRIBUCIÓN POS: {titulo} ---")
         for pos, count in pos_counter.most_common():
-            porcentaje = (count / total_tokens) * 100
-            print(f"{pos:<15} {count:<12,} {porcentaje:<12.2f}%")
+            print(f"{pos:<10} | {count:>10,} | {count / total:>6.2%}")
 
-        # --- GRÁFICO ---
-        # Ordenar por frecuencia para que el gráfico
-        datos_ordenados = pos_counter.most_common()
-        names = [x[0] for x in datos_ordenados]
-        values = [x[1] for x in datos_ordenados]
-
-        fig, ax = plt.subplots(figsize=(12, 6))
-        bars = ax.bar(names, values, color=plt.cm.viridis(range(len(names))), edgecolor='black')
-
-        ax.set_xlabel('Categoría POS', fontweight='bold')
-        ax.set_ylabel('Frecuencia', fontweight='bold')
-        ax.set_title(f'Distribución de Categorías POS{titulo_extra}', fontweight='bold', fontsize=14)
-        ax.tick_params(axis='x', rotation=45)
-        ax.grid(axis='y', alpha=0.3)
-
-        # Añadir el número encima de cada barra
-        for bar in bars:
-            yval = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width() / 2, yval, f'{int(yval):,}', va='bottom', ha='center', fontsize=9)
-
-        plt.tight_layout()
+        # 4. Gráfico de Barras
+        ordenado = pos_counter.most_common()
+        plt.figure(figsize=(10, 5))
+        plt.bar([x[0] for x in ordenado], [x[1] for x in ordenado], color='skyblue', edgecolor='black')
+        plt.title(f"Frecuencia POS - {titulo}")
+        plt.xticks(rotation=45)
         plt.show()
-
     # ============================================
     # 2. MÉTRICAS DERIVADAS
     # ============================================
-    def calcular_metricas_derivadas(self):
-        """Calcula métricas morfológicas avanzadas"""
-        print("=" * 60)
-        print("2. MÉTRICAS DERIVADAS")
-        print("=" * 60 + "\n")
+    def calcular_metricas_derivadas(self, genero_objetivo=None):
+        from collections import Counter
+        import matplotlib.pyplot as plt
 
-        all_pos = [pos for r in self.resultados for pos in r['pos_tags']]
+        # 1. Filtrar datos por género (si no se pasa género, usa todos)
+        datos = [r for r in self.resultados if not genero_objetivo or r['genero'] == genero_objetivo]
+        titulo = f"GÉNERO: {genero_objetivo.upper()}" if genero_objetivo else "TODOS LOS GÉNEROS"
 
-        # Agrupar por categorías principales
-        sustantivos = sum(1 for pos in all_pos if pos.startswith('NOUN'))
-        verbos = sum(1 for pos in all_pos if pos.startswith('VERB'))
-        adjetivos = sum(1 for pos in all_pos if pos.startswith('ADJ'))
-        adverbios = sum(1 for pos in all_pos if pos.startswith('ADV'))
-        pronombres = sum(1 for pos in all_pos if pos == 'PRON')
-        determinantes = sum(1 for pos in all_pos if pos == 'DET')
+        if not datos:
+            print(f"No hay datos para el género: {genero_objetivo}")
+            return
 
+        # 2. Contar todas las etiquetas de una vez
+        all_pos = [p for r in datos for p in r['pos_tags']]
+        c = Counter(all_pos)
         total = len(all_pos)
 
-        print("📊 MÉTRICAS BÁSICAS:")
+        # 3. Agrupar categorías principales
+        sust = c['NOUN'] + c['PROPN']
+        verb = c['VERB'] + c['AUX']
+        adj = c['ADJ']
+        adv = c['ADV']
+        pron = c['PRON']
+        det = c['DET']
+
+        print("=" * 60)
+        print(f"MÉTRICAS: {titulo}")
+        print("=" * 60)
+
+        print(f"MÉTRICAS BÁSICAS:")
         print(f"  Total de tokens: {total:,}")
-        print(f"  Sustantivos: {sustantivos:,} ({sustantivos / total * 100:.2f}%)")
-        print(f"  Verbos: {verbos:,} ({verbos / total * 100:.2f}%)")
-        print(f"  Adjetivos: {adjetivos:,} ({adjetivos / total * 100:.2f}%)")
-        print(f"  Adverbios: {adverbios:,} ({adverbios / total * 100:.2f}%)")
-        print(f"  Pronombres: {pronombres:,} ({pronombres / total * 100:.2f}%)")
+        print(f"  Sustantivos:  {sust:,} ({sust / total:.2%})")
+        print(f"  Verbos:       {verb:,} ({verb / total:.2%})")
+        print(f"  Adjetivos:    {adj:,} ({adj / total:.2%})")
+        print(f"  Adverbios:    {adv:,} ({adv / total:.2%})")
+        print(f"  Pronombres:   {pron:,} ({pron / total:.2%})")
 
-        # Ratios derivados
-        print(f"\n📈 RATIOS DERIVADOS:")
-        print(f"  Ratio Sustantivo/Verbo: {sustantivos / verbos:.2f}")
-        print(f"  Ratio Adjetivo/Sustantivo: {adjetivos / sustantivos:.2f}")
-        print(f"  Densidad léxica: {(sustantivos + verbos + adjetivos + adverbios) / total * 100:.2f}%")
-        print(f"  Complejidad sintáctica: {verbos / total * 100:.2f}%")
+        # 4. Ratios derivados (max(1, x) evita errores de división por cero)
+        print(f"\nRATIOS DERIVADOS:")
+        print(f"  Ratio Sustantivo/Verbo:    {sust / max(1, verb):.2f}")
+        print(f"  Ratio Adjetivo/Sustantivo: {adj / max(1, sust):.2f}")
+        print(f"  Densidad léxica:           {(sust + verb + adj + adv) / total:.2%}")
+        print(f"  Complejidad sintáctica:    {verb / total:.2%}")
 
-        # Gráfico comparativo
-        categorias = ['Sustantivos', 'Verbos', 'Adjetivos', 'Adverbios', 'Pronombres', 'Determinantes']
-        valores = [sustantivos, verbos, adjetivos, adverbios, pronombres, determinantes]
+        # 5. Gráfico horizontal
+        cats = ['Sustantivos', 'Verbos', 'Adjetivos', 'Adverbios', 'Pronombres', 'Determinantes']
+        vals = [sust, verb, adj, adv, pron, det]
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.barh(categorias, valores, color=plt.cm.Set3(range(6)), edgecolor='black', linewidth=1.5)
-        ax.set_xlabel('Frecuencia', fontweight='bold')
-        ax.set_title('Comparación de Categorías Principales', fontweight='bold', fontsize=14)
-        ax.grid(axis='x', alpha=0.3)
+        plt.figure(figsize=(10, 6))
+        plt.barh(cats, vals, color=plt.cm.Set3(range(len(cats))), edgecolor='black')
+        plt.title(f'Distribución Morfológica - {titulo}', fontweight='bold')
+        plt.grid(axis='x', alpha=0.3)
         plt.tight_layout()
         plt.show()
-        print()
 
     # ============================================
     # 3. ANÁLISIS DE PRONOMBRES
     # ============================================
-    def analisis_pronombres(self):
-        """Análisis detallado del uso de pronombres"""
-        print("=" * 60)
-        print("3. ANÁLISIS DE PRONOMBRES")
-        print("=" * 60 + "\n")
+    def analisis_pronombres(self, gen1="hip hop", gen2="pop"):
+        # Listas de personas gramaticales
+        p1_list = ['i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours']
+        p2_list = ['you', 'your', 'yours']
+        p3_list = ['he', 'him', 'his', 'she', 'her', 'hers', 'it', 'its', 'they', 'them', 'their', 'theirs']
 
-        # Pronombres por género
-        pronombres_hiphop = [p for r in self.resultados if r['genero'] == 'hip hop' for p in r['pronombres']]
-        pronombres_pop = [p for r in self.resultados if r['genero'] == 'pop' for p in r['pronombres']]
+        def obtener_datos(genero):
+            pronombres = [p.lower() for r in self.resultados if r['genero'] == genero for p in r['pronombres']]
+            conteo = Counter(pronombres)
+            # Sumar por persona
+            p1 = sum(conteo[p] for p in p1_list)
+            p2 = sum(conteo[p] for p in p2_list)
+            p3 = sum(conteo[p] for p in p3_list)
+            return pronombres, conteo, [p1, p2, p3]
 
-        counter_hiphop = Counter(pronombres_hiphop)
-        counter_pop = Counter(pronombres_pop)
+        # Obtener datos para ambos géneros
+        prons1, counts1, pers1 = obtener_datos(gen1)
+        prons2, counts2, pers2 = obtener_datos(gen2)
 
-        print("🎤 HIP-HOP - Top 10 Pronombres:")
-        for pron, count in counter_hiphop.most_common(10):
-            porcentaje = (count / len(pronombres_hiphop)) * 100
-            print(f"  {pron:<10} → {count:,} ({porcentaje:.2f}%)")
+        # --- IMPRESIÓN DE RESULTADOS ---
+        print(f"{gen1.upper()} - Top 10 Pronombres:")
+        for pron, cant in counts1.most_common(10):
+            print(f"  {pron:<10} → {cant:,} ({cant / len(prons1):.2%})")
 
-        print("\n🎵 POP - Top 10 Pronombres:")
-        for pron, count in counter_pop.most_common(10):
-            porcentaje = (count / len(pronombres_pop)) * 100
-            print(f"  {pron:<10} → {count:,} ({porcentaje:.2f}%)")
+        print(f"\n{gen2.upper()} - Top 10 Pronombres:")
+        for pron, cant in counts2.most_common(10):
+            print(f"  {pron:<10} → {cant:,} ({cant / len(prons2):.2%})")
 
-        # Clasificación por persona
-        primera_persona = ['i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours']
-        segunda_persona = ['you', 'your', 'yours']
-        tercera_persona = ['he', 'him', 'his', 'she', 'her', 'hers', 'it', 'its', 'they', 'them', 'their', 'theirs']
+        print(f"\nDISTRIBUCIÓN POR PERSONA:")
+        print(f"  {gen1.capitalize():<10}: 1ª pers {pers1[0]:,}, 2ª pers {pers1[1]:,}, 3ª pers {pers1[2]:,}")
+        print(f"  {gen2.capitalize():<10}: 1ª pers {pers2[0]:,}, 2ª pers {pers2[1]:,}, 3ª pers {pers2[2]:,}")
 
-        p1_hiphop = sum(counter_hiphop[p] for p in primera_persona)
-        p2_hiphop = sum(counter_hiphop[p] for p in segunda_persona)
-        p3_hiphop = sum(counter_hiphop[p] for p in tercera_persona)
+        # --- GRÁFICO COMPARATIVO ---
+        fig, ax = plt.subplots(figsize=(10, 6))
+        x = range(3)
+        labels = ['1ª Persona', '2ª Persona', '3ª Persona']
 
-        p1_pop = sum(counter_pop[p] for p in primera_persona)
-        p2_pop = sum(counter_pop[p] for p in segunda_persona)
-        p3_pop = sum(counter_pop[p] for p in tercera_persona)
+        ax.bar([i - 0.2 for i in x], pers1, width=0.4, label=gen1.upper(), color='#e74c3c', edgecolor='black')
+        ax.bar([i + 0.2 for i in x], pers2, width=0.4, label=gen2.upper(), color='#3498db', edgecolor='black')
 
-        print(f"\n👤 DISTRIBUCIÓN POR PERSONA:")
-        print(f"  Hip-Hop: 1ª persona {p1_hiphop:,}, 2ª persona {p2_hiphop:,}, 3ª persona {p3_hiphop:,}")
-        print(f"  Pop:     1ª persona {p1_pop:,}, 2ª persona {p2_pop:,}, 3ª persona {p3_pop:,}")
-
-        # Gráfico comparativo
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-
-        personas = ['1ª Persona', '2ª Persona', '3ª Persona']
-        hiphop_vals = [p1_hiphop, p2_hiphop, p3_hiphop]
-        pop_vals = [p1_pop, p2_pop, p3_pop]
-
-        ax1.bar(personas, hiphop_vals, color=['#e74c3c', '#3498db', '#2ecc71'], edgecolor='black')
-        ax1.set_title('Pronombres por Persona - Hip-Hop', fontweight='bold')
-        ax1.set_ylabel('Frecuencia')
-
-        ax2.bar(personas, pop_vals, color=['#e74c3c', '#3498db', '#2ecc71'], edgecolor='black')
-        ax2.set_title('Pronombres por Persona - Pop', fontweight='bold')
-        ax2.set_ylabel('Frecuencia')
-
-        plt.tight_layout()
+        ax.set_xticks(x)
+        ax.set_xticklabels(labels)
+        ax.set_title(f"Comparación de Pronombres: {gen1.upper()} vs {gen2.upper()}")
+        ax.legend()
         plt.show()
-        print()
 
     # ============================================
     # 4. PATRONES ESPECÍFICOS DEL GÉNERO
     # ============================================
-    def patrones_por_genero(self):
-        """Identifica patrones morfológicos únicos de cada género"""
-        print("=" * 60)
-        print("4. PATRONES ESPECÍFICOS POR GÉNERO")
-        print("=" * 60 + "\n")
+    def patrones_por_genero(self, gen1="hip hop", gen2="pop"):
+        # 1. Obtener etiquetas POS y totales por género
+        pos1 = [pos for r in self.resultados if r['genero'] == gen1 for pos in r['pos_tags']]
+        pos2 = [pos for r in self.resultados if r['genero'] == gen2 for pos in r['pos_tags']]
 
-        # POS tags por género
-        pos_hiphop = [pos for r in self.resultados if r['genero'] == 'hip hop' for pos in r['pos_tags']]
-        pos_pop = [pos for r in self.resultados if r['genero'] == 'pop' for pos in r['pos_tags']]
+        c1, t1 = Counter(pos1), len(pos1)
+        c2, t2 = Counter(pos2), len(pos2)
 
-        counter_hh = Counter(pos_hiphop)
-        counter_pop = Counter(pos_pop)
+        # 2. Seleccionar las 10 categorías más comunes del primer género para comparar
+        top_pos = [item[0] for item in c1.most_common(10)]
 
-        total_hh = len(pos_hiphop)
-        total_pop = len(pos_pop)
+        # 3. Convertir a porcentajes para que la comparación sea justa
+        vals1 = [(c1[p] / t1 * 100) if t1 > 0 else 0 for p in top_pos]
+        vals2 = [(c2[p] / t2 * 100) if t2 > 0 else 0 for p in top_pos]
 
-        # Calcular diferencias relativas
-        diferencias = {}
-        for pos in set(list(counter_hh.keys()) + list(counter_pop.keys())):
-            freq_hh = (counter_hh[pos] / total_hh * 100) if total_hh > 0 else 0
-            freq_pop = (counter_pop[pos] / total_pop * 100) if total_pop > 0 else 0
-            diferencias[pos] = freq_hh - freq_pop
-
-        # Patrones distintivos
-        print("🎤 PATRONES DISTINTIVOS DE HIP-HOP:")
-        for pos, diff in sorted(diferencias.items(), key=lambda x: x[1], reverse=True)[:5]:
-            print(f"  {pos:<10} → +{diff:.2f}% más frecuente que en Pop")
-
-        print("\n🎵 PATRONES DISTINTIVOS DE POP:")
-        for pos, diff in sorted(diferencias.items(), key=lambda x: x[1])[:5]:
-            print(f"  {pos:<10} → +{abs(diff):.2f}% más frecuente que en Hip-Hop")
-
-        # Gráfico comparativo
-        top_pos = [item[0] for item in counter_hh.most_common(10)]
-        hh_vals = [(counter_hh[pos] / total_hh * 100) for pos in top_pos]
-        pop_vals = [(counter_pop[pos] / total_pop * 100) for pos in top_pos]
-
+        # 4. Crear el Gráfico
         x = range(len(top_pos))
-        width = 0.35
+        plt.figure(figsize=(12, 6))
 
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.bar([i - width / 2 for i in x], hh_vals, width, label='Hip-Hop', color='#e74c3c', edgecolor='black')
-        ax.bar([i + width / 2 for i in x], pop_vals, width, label='Pop', color='#3498db', edgecolor='black')
+        plt.bar([i - 0.2 for i in x], vals1, width=0.4, label=gen1.upper(), color='#e74c3c', edgecolor='black')
+        plt.bar([i + 0.2 for i in x], vals2, width=0.4, label=gen2.upper(), color='#3498db', edgecolor='black')
 
-        ax.set_xlabel('Categoría POS', fontweight='bold')
-        ax.set_ylabel('Porcentaje (%)', fontweight='bold')
-        ax.set_title('Comparación de Patrones POS: Hip-Hop vs Pop', fontweight='bold', fontsize=14)
-        ax.set_xticks(x)
-        ax.set_xticklabels(top_pos, rotation=45)
-        ax.legend()
-        ax.grid(axis='y', alpha=0.3)
+        plt.title(f'Patrones POS: {gen1.upper()} vs {gen2.upper()}', fontweight='bold')
+        plt.ylabel('Porcentaje (%)')
+        plt.xticks(x, top_pos)
+        plt.legend()
+        plt.grid(axis='y', alpha=0.3)
         plt.tight_layout()
         plt.show()
-        print()
 
