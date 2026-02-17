@@ -6,34 +6,50 @@ import re
 class DataCleaner:
     def __init__(self):
         loader = SpotifyDataLoader()
-        self.df = loader.df
+        self.corpus = loader.corpus
 
-        # 1. Filtrar solo hip-hop
-        self.df = self.df[self.df['Genre'] == 'hip hop']
+        # 1. Ver cuántos registros hay de cada género
+        print("📊 Registros por género:")
+        print(f"Hip-hop: {len(self.corpus[self.corpus['Genre'] == 'hip hop']):,}")
+        print(f"Pop: {len(self.corpus[self.corpus['Genre'] == 'pop']):,}\n")
 
-        # 2. Extraer solo el año de Release Date
-        self.df['Release Date'] = self.df['Release Date'].str.extract(r'(\d{4})')
-        self.df['Release Date'] = pd.to_numeric(self.df['Release Date'], errors='coerce')
-        self.df = self.df[self.df['Release Date'] >= 1990]
+        # 2. Filtrar hip-hop y pop
+        self.corpus = self.corpus[self.corpus['Genre'].isin(['hip hop', 'pop'])]
 
-        # 3. Muestreo de registros
-        n_samples = min(len(self.df), 10000)
-        if len(self.df) > n_samples:
-            self.df = self.df.sample(n=n_samples, random_state=42)
+        # 3. Extraer solo el año de Release Date
+        self.corpus['Release Date'] = self.corpus['Release Date'].str.extract(r'(\d{4})')
+        self.corpus['Release Date'] = pd.to_numeric(self.corpus['Release Date'], errors='coerce')
+        self.corpus = self.corpus[self.corpus['Release Date'] >= 1990]
 
-        # 4. Seleccionar columnas necesarias
-        self.df = self.df[['text', 'emotion', 'Release Date', 'Genre', 'Explicit', 'Popularity']]
+        # 4. Muestreo balanceado: 5000 hip-hop + 5000 pop
+        hip_hop_corpus = self.corpus[self.corpus['Genre'] == 'hip hop']
+        pop_corpus = self.corpus[self.corpus['Genre'] == 'pop']
 
-        # 5. Limpieza de texto
+        # Tomar 5000 de cada uno (o todos si hay menos)
+        hip_hop_sample = hip_hop_corpus.sample(n=min(len(hip_hop_corpus), 5000), random_state=42)
+        pop_sample = pop_corpus.sample(n=min(len(pop_corpus), 5000), random_state=42)
+
+        # Combinar
+        self.corpus = pd.concat([hip_hop_sample, pop_sample], ignore_index=True)
+
+        print(f"Muestra final:")
+        print(f"Hip-hop: {len(hip_hop_sample):,}")
+        print(f"Pop: {len(pop_sample):,}")
+        print(f"Total: {len(self.corpus):,}\n")
+
+        # 5. Seleccionar columnas necesarias
+        self.corpus = self.corpus[['text', 'emotion', 'Release Date', 'Genre', 'Explicit', 'Popularity']]
+
+        # 6. Limpieza de texto
         print("Limpiando texto...")
-        self.df['text'] = self.df['text'].apply(self.limpiar_texto)
+        self.corpus['text'] = self.corpus['text'].apply(self.limpiar_texto)
 
-        # 6. Eliminar filas con texto vacío o nulo después de limpiar
-        self.df = self.df[self.df['text'].notna() & (self.df['text'].str.len() > 0)]
+        # 7. Eliminar filas con texto vacío o nulo después de limpiar
+        self.corpus = self.corpus[self.corpus['text'].notna() & (self.corpus['text'].str.len() > 0)]
 
-        # 7. Guardar CSV
-        self.df.to_csv("../../data/processed/spotify_clean02.csv", index=False, sep=';')
-        print(f"✅ CSV guardado con {len(self.df)} filas y texto limpio")
+        # 8. Guardar CSV
+        self.corpus.to_csv("../../data/processed/spotify_clean02.csv", index=False, sep=';')
+        print(f"✅ CSV guardado con {len(self.corpus)} filas y texto limpio")
 
     def limpiar_texto(self, texto):
         if not isinstance(texto, str):

@@ -8,7 +8,6 @@ class POSVisualizer:
         self.df = pd.read_csv(filepath, sep=';')
 
     def comparar_distribucion(self):
-        """Genera gráfico comparativo de distribución de tags entre NLTK y Spacy"""
         # Contar tags
         nltk_counts = Counter(self.df['nltk_tag'])
         spacy_counts = Counter(self.df['spacy_pos'])
@@ -57,6 +56,3 @@ class POSVisualizer:
 
 
 # Uso
-visualizer = POSVisualizer("../../data/results/comparisons.csv")
-visualizer.comparar_distribucion()
-visualizer.mostrar_metricas()

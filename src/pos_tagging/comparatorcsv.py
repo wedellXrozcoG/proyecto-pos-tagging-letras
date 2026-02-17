@@ -2,7 +2,7 @@ import pandas as pd
 from nltk import pos_tag, word_tokenize
 import spacy
 
-
+# ES PARA CREAR EL CSV CON LA COMPARACIÓN
 class POSComparator:
     def __init__(self, filepath):
         self.nlp = spacy.load("en_core_web_sm")
@@ -57,7 +57,7 @@ class POSComparator:
                 else:
                     print(f"{word:<20} {nltk_tag:<15}")
 
-    def guardar_csv(self, output_path="../../data/results/comparisons.csv"):
+    def guardar_csv(self, output_path="../data/results/comparisons.csv"):
         #Guarda los resultados en un CSV
         corpus_resultados = pd.DataFrame(self.resultados)
         corpus_resultados.to_csv(output_path, index=False, sep=';')
@@ -65,6 +65,6 @@ class POSComparator:
 
 
 
-comparator = POSComparator("../../data/processed/spotify_clean02.csv")
+comparator = POSComparator("../data/processed/spotify_clean02.csv")
 comparator.comparar_canciones(n_canciones=5)
 comparator.guardar_csv()
