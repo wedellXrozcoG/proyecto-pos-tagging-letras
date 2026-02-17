@@ -5,9 +5,9 @@ import spacy
 
 
 class AnalisisMorfologico:
-    def __init__(self, filepath):
+    def __init__(self, dataframe):
         self.nlp = spacy.load("en_core_web_sm")
-        self.corpus = pd.read_csv(filepath, sep=';')
+        self.corpus = dataframe
         self.resultados = []
 
     def procesar_corpus(self):
@@ -15,12 +15,13 @@ class AnalisisMorfologico:
         print("Procesando corpus...")
 
         for idx, row in self.corpus.iterrows():
-            doc = self.nlp(row['text'][:512])
+            doc = self.nlp(row['text'][:512]) #Toma solo los primeros 512 caracteres de la letra
 
+                #Diccionario
             self.resultados.append({
                 'genero': row['Genre'],
                 'año': row['Release Date'],
-                'pos_tags': [t.pos_ for t in doc if not t.is_punct and not t.is_space],
+                'pos_tags': [t.pos_ for t in doc if not t.is_punct and not t.is_space], #Exceptúa espacios y puntuaciones
                 'fine_tags': [t.tag_ for t in doc if not t.is_punct and not t.is_space],
                 'pronombres': [t.text.lower() for t in doc if t.pos_ == 'PRON'],
                 'tokens': [t for t in doc if not t.is_punct and not t.is_space]
@@ -32,40 +33,66 @@ class AnalisisMorfologico:
         print("✅ Procesamiento completo\n")
 
     # ============================================
-    # 1. DISTRIBUCIÓN POS COMPLETA (6 pts)
+    # 1. DISTRIBUCIÓN POS COMPLETA
     # ============================================
-    def distribucion_pos_completa(self):
-        """Muestra distribución completa de todas las categorías POS"""
-        print("=" * 60)
-        print("1. DISTRIBUCIÓN POS COMPLETA")
-        print("=" * 60 + "\n")
+    def distribucion_pos_completa(self, genero_objetivo=None):
+        """Muestra distribución completa. Si genero_objetivo es None, muestra todo."""
+        from collections import Counter
+        import matplotlib.pyplot as plt
 
-        all_pos = [pos for r in self.resultados for pos in r['pos_tags']]
+        # 1. Filtrar los datos por género
+        if genero_objetivo:
+            datos_filtrados = [r for r in self.resultados if r['genero'] == genero_objetivo]
+            titulo_extra = f" (Género: {genero_objetivo})"
+        else:
+            datos_filtrados = self.resultados
+            titulo_extra = " (Todos los géneros)"
+
+        if not datos_filtrados:
+            print(f"No se encontraron datos para el género: {genero_objetivo}")
+            return
+
+        # 2. Aplanar la lista de pos_tags
+        all_pos = [pos for r in datos_filtrados for pos in r['pos_tags']]
+        total_tokens = len(all_pos)
         pos_counter = Counter(all_pos)
 
-        # Tabla completa
+        # --- IMPRESIÓN DE TABLA ---
+        print("=" * 60)
+        print(f"1. DISTRIBUCIÓN POS COMPLETA{titulo_extra}")
+        print("=" * 60 + "\n")
         print(f"{'Categoría POS':<15} {'Frecuencia':<12} {'Porcentaje':<12}")
         print("-" * 60)
+
         for pos, count in pos_counter.most_common():
-            porcentaje = (count / len(all_pos)) * 100
+            porcentaje = (count / total_tokens) * 100
             print(f"{pos:<15} {count:<12,} {porcentaje:<12.2f}%")
 
-        # Gráfico
+        # --- GRÁFICO ---
+        # Ordenar por frecuencia para que el gráfico
+        datos_ordenados = pos_counter.most_common()
+        names = [x[0] for x in datos_ordenados]
+        values = [x[1] for x in datos_ordenados]
+
         fig, ax = plt.subplots(figsize=(12, 6))
-        names = list(pos_counter.keys())
-        values = list(pos_counter.values())
-        ax.bar(names, values, color=plt.cm.tab20(range(len(names))), edgecolor='black')
+        bars = ax.bar(names, values, color=plt.cm.viridis(range(len(names))), edgecolor='black')
+
         ax.set_xlabel('Categoría POS', fontweight='bold')
         ax.set_ylabel('Frecuencia', fontweight='bold')
-        ax.set_title('Distribución Completa de Categorías POS', fontweight='bold', fontsize=14)
+        ax.set_title(f'Distribución de Categorías POS{titulo_extra}', fontweight='bold', fontsize=14)
         ax.tick_params(axis='x', rotation=45)
         ax.grid(axis='y', alpha=0.3)
+
+        # Añadir el número encima de cada barra
+        for bar in bars:
+            yval = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, yval, f'{int(yval):,}', va='bottom', ha='center', fontsize=9)
+
         plt.tight_layout()
         plt.show()
-        print()
 
     # ============================================
-    # 2. MÉTRICAS DERIVADAS (6 pts)
+    # 2. MÉTRICAS DERIVADAS
     # ============================================
     def calcular_metricas_derivadas(self):
         """Calcula métricas morfológicas avanzadas"""
@@ -114,7 +141,7 @@ class AnalisisMorfologico:
         print()
 
     # ============================================
-    # 3. ANÁLISIS DE PRONOMBRES (6 pts)
+    # 3. ANÁLISIS DE PRONOMBRES
     # ============================================
     def analisis_pronombres(self):
         """Análisis detallado del uso de pronombres"""
@@ -176,7 +203,7 @@ class AnalisisMorfologico:
         print()
 
     # ============================================
-    # 4. PATRONES ESPECÍFICOS DEL GÉNERO (6 pts)
+    # 4. PATRONES ESPECÍFICOS DEL GÉNERO
     # ============================================
     def patrones_por_genero(self):
         """Identifica patrones morfológicos únicos de cada género"""
@@ -233,72 +260,3 @@ class AnalisisMorfologico:
         plt.show()
         print()
 
-    # ============================================
-    # 5. INTERPRETACIÓN CONTEXTUALIZADA (6 pts)
-    # ============================================
-    def interpretacion_contextualizada(self):
-        """Interpreta los hallazgos morfológicos en contexto"""
-        print("=" * 60)
-        print("5. INTERPRETACIÓN CONTEXTUALIZADA")
-        print("=" * 60 + "\n")
-
-        all_pos = [pos for r in self.resultados for pos in r['pos_tags']]
-        pos_counter = Counter(all_pos)
-
-        total = len(all_pos)
-        sustantivos = sum(1 for pos in all_pos if pos == 'NOUN')
-        verbos = sum(1 for pos in all_pos if pos == 'VERB')
-        pronombres = sum(1 for pos in all_pos if pos == 'PRON')
-
-        print("📝 INTERPRETACIÓN DE HALLAZGOS:\n")
-
-        print("1️⃣ Densidad de Sustantivos:")
-        sust_pct = sustantivos / total * 100
-        print(f"   → {sust_pct:.2f}% del texto son sustantivos")
-        if sust_pct > 25:
-            print("   → Alta densidad: Indica narrativas descriptivas y concretas")
-        else:
-            print("   → Baja densidad: Lenguaje más abstracto y conceptual")
-
-        print(f"\n2️⃣ Uso de Verbos:")
-        verb_pct = verbos / total * 100
-        print(f"   → {verb_pct:.2f}% del texto son verbos")
-        if verb_pct > 15:
-            print("   → Alto dinamismo: Énfasis en acciones y movimiento")
-        else:
-            print("   → Bajo dinamismo: Enfoque en estados y descripciones")
-
-        print(f"\n3️⃣ Pronombres:")
-        pron_pct = pronombres / total * 100
-        print(f"   → {pron_pct:.2f}% del texto son pronombres")
-
-        # Análisis por género
-        pronombres_hiphop = [p for r in self.resultados if r['genero'] == 'hip hop' for p in r['pronombres']]
-        pronombres_pop = [p for r in self.resultados if r['genero'] == 'pop' for p in r['pronombres']]
-
-        i_hiphop = sum(1 for p in pronombres_hiphop if p == 'i')
-        i_pop = sum(1 for p in pronombres_pop if p == 'i')
-
-        print(f"\n4️⃣ Diferencias entre géneros:")
-        print(f"   Hip-Hop: {i_hiphop:,} usos de 'I' → Narrativa autobiográfica fuerte")
-        print(f"   Pop: {i_pop:,} usos de 'I' → {'Mayor' if i_pop > i_hiphop else 'Menor'} énfasis en lo personal")
-
-        print(f"\n5️⃣ Conclusión General:")
-        print(f"   → El corpus muestra un lenguaje {'lírico-narrativo' if sust_pct > 25 else 'conceptual-abstracto'}")
-        print(f"   → {'Alta' if verb_pct > 15 else 'Baja'} orientación hacia la acción")
-        print(f"   → Perspectiva {'fuertemente' if pron_pct > 10 else 'moderadamente'} centrada en lo personal")
-        print()
-
-    def ejecutar_analisis_completo(self):
-        """Ejecuta todos los análisis morfológicos"""
-        self.procesar_corpus()
-        self.distribucion_pos_completa()
-        self.calcular_metricas_derivadas()
-        self.analisis_pronombres()
-        self.patrones_por_genero()
-        self.interpretacion_contextualizada()
-
-
-# Uso
-analisis = AnalisisMorfologico("../../data/processed/spotify_clean02.csv")
-analisis.ejecutar_analisis_completo()
