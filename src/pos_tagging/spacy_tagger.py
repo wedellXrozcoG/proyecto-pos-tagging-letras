@@ -1,3 +1,4 @@
+import time  # Importante para medir el tiempo
 from tqdm import tqdm
 # Descargar modelo de Spacy
 import subprocess
@@ -113,9 +114,6 @@ class pos_spacy(preprocesador):
         return resultados
 
     def auto_grafico_pos_total(self, col_txt, col_exp):
-        import pandas as pd
-        import matplotlib.pyplot as plt
-
         print(f"📊 Generando gráfico total basado en '{col_exp}'...")
 
         # 1. Expandir la columna 'pos_tags' (que ya debe existir en self.df)
@@ -160,5 +158,47 @@ class pos_spacy(preprocesador):
         plt.legend(title='Estado Binario')
         plt.tight_layout()
         plt.show()
+
+    def multiples_spacyF2_time(self, columna, batch_size: int = 2000):
+        resultados = []
+        textos = self.df[columna].astype(str)
+        total_canciones = len(textos)
+
+        # 1. Capturamos el tiempo de inicio
+        inicio = time.time()
+
+        # Procesamiento con el generador de spaCy
+        generador = nlp.pipe(textos, batch_size=batch_size)
+
+        for doc in tqdm(generador, total=total_canciones, desc="Procesando"):
+            tokens_del_texto = []
+            for token in doc:
+                tokens_del_texto.append(
+                    (token.text, token.pos_, token.tag_)
+                )
+            resultados.append(tokens_del_texto)
+
+        # 2. Capturamos el tiempo final y calculamos
+        fin = time.time()
+        segundos_totales = fin - inicio
+
+        # --- CÁLCULOS DE RENDIMIENTO ---
+        minutos = int(segundos_totales // 60)
+        segundos_restantes = segundos_totales % 60
+
+        # Formula Canciones por segundo
+        velocidad = total_canciones / segundos_totales
+
+        # Formula Latencia
+        latencia = (segundos_totales / total_canciones) * 1000
+
+        # 3. Imprimimos el reporte de rendimiento
+        print(f"\n✅ ¡Proceso finalizado!")
+        print(f"📊 --- MÉTRICAS DE RENDIMIENTO ---")
+        print(f"Tiempo total: {minutos} min {segundos_restantes:.2f} seg")
+        print(f"Velocidad: {velocidad:.2f} canciones/seg") # Velocidad = Numero total de canciones/segundos totales
+        print(f"Latencia: {latencia:.2f} ms por canción") # Latencia = (segundos totales / total de canciones)* 1000 milisegundos
+
+        return
 
 
