@@ -1,5 +1,7 @@
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 
 class preprocesador:
     def __init__(self, df):
@@ -44,7 +46,6 @@ class preprocesador:
             legend=False
         )
 
-        # El resto del código se queda igual...
         for p in ax.patches:
             ax.annotate(f'{int(p.get_height())}',
                         (p.get_x() + p.get_width() / 2., p.get_height()),
@@ -55,20 +56,40 @@ class preprocesador:
         plt.title(f'{titulo} {columna}', fontsize=15, fontweight='bold')
         plt.show()
 
-    def grafico_pie(self, columna, titulo="Distribución"):
-        """Genera un gráfico de pastel para una columna categórica."""
-        plt.figure(figsize=(8, 8))
-        counts = self.df[columna].value_counts()
+    def grafico_pie(self, genero=None):
+        """Genera un gráfico pastel con las emociones dependiendo del genero."""
+        df = self.df.copy()
+        if genero:
+            df = df[df['Genre'].str.lower() == genero.lower()]
 
-        # Definir colores bonitos
-        colors = sns.color_palette('pastel')[0:len(counts)]
+        # 2. Contamos las emociones
+        conteo = df['emotion'].value_counts().reset_index()
+        conteo.columns = ['emocion', 'total']
 
-        plt.pie(counts,
-                labels=counts.index,
-                autopct='%1.1f%%',
-                startangle=140,
-                colors=colors,
-                wedgeprops={'edgecolor': 'white'})
+        # 3. Dibujar gráfico
+        fig = px.pie(conteo,
+                     values='total',
+                     names='emocion',
+                     title=f"Emociones en: {genero if genero else 'Todos los géneros'}",
+                     hole=0.4)  # Estilo dona
 
-        plt.title(f'{titulo}: {columna}', fontsize=15, fontweight='bold')
-        plt.show()
+        fig.show()
+
+    def grafico_popularidad_genero(self):
+        """Genera un boxplot segun el genero"""
+        fig = px.box(self.df,
+                     x="Genre",
+                     y="Popularity",
+                     color="Genre",
+                     title="Popularidad según el Género Musical")
+        fig.show()
+
+    def grafico_popularidad_tiempo(self):
+        """Muestra la distribucion segun la popularidad"""
+        fig = px.scatter(self.df,
+                         x="Release Date",
+                         y="Popularity",
+                         color="Genre",
+                         hover_name="Explicit",  # Lo que se va a ver al pasar el cursor
+                         title="Evolución de la Popularidad en el Tiempo")
+        fig.show()
