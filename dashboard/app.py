@@ -7,16 +7,15 @@ from dash import html
 from src.analysis.Analisismorfologico import AnalisisMorfologico
 from src.analysis.temporal_analyzer import TemporalAnalyzer
 from src.data.preprocessorEDA import preprocesador
-from src.visualization.comparison_plots import POSVisualizer
 
 # Cargar análisis
 
 df = pd.read_csv('../data/processed/spotify_clean02.csv', sep=';')
+
 analisis = AnalisisMorfologico(df)
 analisis.procesar_corpus()
 temporal = TemporalAnalyzer(df)
 eda = preprocesador(df)
-visualizer = POSVisualizer(df)
 
 app = Dash(__name__)
 
@@ -32,7 +31,6 @@ app.layout = html.Div(className='main-container', children=[
         html.Button('Evolución Temporal', id='btn-nclicks-2', n_clicks=0, className='nav-button'),
         html.Button('Comparación de Género', id='btn-nclicks-3', n_clicks=0, className='nav-button'),
         html.Button('Emocionalidad', id='btn-nclicks-4', n_clicks=0, className='nav-button'),
-        html.Button('Spacy vs NLTK', id='btn-nclicks-5', n_clicks=0, className='nav-button'),
     ]),
 
     html.Div(id='container-button-timestamp', className='content-area')
@@ -45,10 +43,9 @@ app.layout = html.Div(className='main-container', children=[
     Input('btn-nclicks-1', 'n_clicks'),
     Input('btn-nclicks-2', 'n_clicks'),
     Input('btn-nclicks-3', 'n_clicks'),
-    Input('btn-nclicks-4', 'n_clicks'),
-    Input('btn-nclicks-5', 'n_clicks')
+    Input('btn-nclicks-4', 'n_clicks')
 )
-def displayClick(btn1, btn2, btn3, btn4, btn5):
+def displayClick(btn1, btn2, btn3, btn4):
 
     if ctx.triggered_id == "btn-nclicks-1":
         return html.Div([
@@ -90,15 +87,6 @@ def displayClick(btn1, btn2, btn3, btn4, btn5):
                 dcc.Tab(label='Pop', value='tab-emo-2'),
             ]),
             html.Div(id='tabs-content-emociones')
-        ])
-
-    elif ctx.triggered_id == "btn-nclicks-5":
-        return html.Div([
-            html.H3("Comparativa Spacy vs NLTK"),
-            dcc.Graph(
-                figure=visualizer.comparar_distribucion()
-            )
-            ,
         ])
 
     return html.Div("Selecciona un botón para ver el análisis")
@@ -194,6 +182,5 @@ def render_emociones_tabs(tab):
                 figure=eda.grafico_pie('pop')
             )
         ])
-
 
 app.run(debug=False)

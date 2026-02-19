@@ -73,7 +73,7 @@ class preprocesador:
                      title=f"Emociones en: {genero if genero else 'Todos los géneros'}",
                      hole=0.4)  # Estilo dona
 
-        fig.show()
+        return fig
 
     def grafico_popularidad_genero(self):
         """Genera un boxplot segun el genero"""
@@ -82,7 +82,7 @@ class preprocesador:
                      y="Popularity",
                      color="Genre",
                      title="Popularidad según el Género Musical")
-        fig.show()
+        return fig
 
     def grafico_popularidad_tiempo(self):
         """Muestra la distribucion segun la popularidad"""
@@ -92,4 +92,4 @@ class preprocesador:
                          color="Genre",
                          hover_name="Explicit",  # Lo que se va a ver al pasar el cursor
                          title="Evolución de la Popularidad en el Tiempo")
-        fig.show()
+        return fig
