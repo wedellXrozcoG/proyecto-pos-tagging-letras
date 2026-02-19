@@ -1,18 +1,27 @@
-# PREGUNTA 1: ¿QUÉ SENTIMIENTOS PREDOMINARON POR DÉCADA DESDE LOS 90s HASTA 2020s?
+# PREGUNTA 1: ¿QUÉ PALABRAS SE USARON MÁS POR DÉCADA?
 
 import pandas as pd
-import matplotlib.pyplot as plt
-from nltk import pos_tag, word_tokenize
+import plotly.express as px
+import spacy
 from collections import Counter
 
 
 class TemporalAnalyzer:
-    def __init__(self, filepath):
-        self.corpus = pd.read_csv(filepath, sep=';')
+    def __init__(self, dataframe):
+        self.nlp = spacy.load("en_core_web_sm")
+        self.corpus = dataframe
         self.puntuacion = {'.', ',', '!', '?', ';', ':', '"', "'", '(', ')', '-', '--', '...', '`', '``', "''"}
+        # se hace una caché para qu ecada vez que cambio de tag en la pág principal no dure un montón por la re-ejecución del méto do.
+        print("Procesando datos temporales (solo una vez)...")
+        self._df_palabras = None  # Cache
+        self._df_sentimientos = None  # Cache
 
     def palabras_mas_usadas_por_decada(self):
-        """Top palabras más usadas por década"""
+        # ✅ Si ya está procesado, retornar directamente
+        if self._df_palabras is not None:
+            print("Usando cache de palabras...")
+            return self._crear_grafico_palabras()
+
         decadas = {
             '1990s': range(1990, 2000),
             '2000s': range(2000, 2010),
@@ -20,25 +29,42 @@ class TemporalAnalyzer:
             '2020s': range(2020, 2025)
         }
 
-        print("🔥 TOP 10 PALABRAS MÁS USADAS POR DÉCADA\n")
+        print("TOP 10 PALABRAS MÁS USADAS POR DÉCADA\n")
+        resultados = []
 
         for decada, años in decadas.items():
             canciones_decada = self.corpus[self.corpus['Release Date'].isin(años)]
             todas_palabras = []
 
             for texto in canciones_decada['text']:
-                tokens = word_tokenize(texto.lower())
-                todas_palabras.extend([t for t in tokens if t not in self.puntuacion and t.isalnum()])
+                doc = self.nlp(texto.lower())
+                todas_palabras.extend([token.text for token in doc
+                                       if not token.is_punct and not token.is_space and token.text.isalnum()])
 
             palabras_counter = Counter(todas_palabras)
 
             print(f"📅 {decada}:")
             for palabra, count in palabras_counter.most_common(10):
                 print(f"  {palabra:15} → {count:,}")
+                resultados.append({'decada': decada, 'palabra': palabra, 'count': count})
             print()
 
+        self._df_palabras = pd.DataFrame(resultados)  # ✅ Guardar cache
+        return self._crear_grafico_palabras()
+
+    def _crear_grafico_palabras(self):
+        #Gráfico con los datos en caché
+        fig = px.bar(self._df_palabras, x='palabra', y='count', color='decada',
+                     barmode='group',
+                     title='Top 10 Palabras Más Usadas por Década')
+        fig.update_layout(xaxis_title='Palabra', yaxis_title='Frecuencia', height=500)
+        return fig
+
     def sentimientos_por_decada(self):
-        """Analiza qué sentimientos predominaron por década"""
+        # esto inidca que si ya está procesado, retorne la cache
+        if self._df_sentimientos is not None:
+            return self._df_sentimientos
+
         decadas = {
             '1990s': range(1990, 2000),
             '2000s': range(2000, 2010),
@@ -46,9 +72,9 @@ class TemporalAnalyzer:
             '2020s': range(2020, 2025)
         }
 
-        print("😊 SENTIMIENTOS PREDOMINANTES POR DÉCADA\n")
-
+        print("SENTIMIENTOS PREDOMINANTES POR DÉCADA\n")
         resultados = []
+
         for decada, años in decadas.items():
             canciones_decada = self.corpus[self.corpus['Release Date'].isin(años)]
             emociones = Counter(canciones_decada['emotion'])
@@ -60,34 +86,16 @@ class TemporalAnalyzer:
                 resultados.append({'decada': decada, 'emocion': emocion, 'count': count, 'porcentaje': porcentaje})
             print()
 
-        return pd.DataFrame(resultados)
+        self._df_sentimientos = pd.DataFrame(resultados)  # SE GUARDA LA CACHÉ
+        return self._df_sentimientos
 
     def visualizar_sentimientos(self):
-        """Gráfico de sentimientos por década"""
-        df_sentimientos = self.sentimientos_por_decada()
+        df_sentimientos = self.sentimientos_por_decada()  # Usa cache
 
-        # Gráfico de barras agrupadas
-        decadas = df_sentimientos['decada'].unique()
-        emociones = df_sentimientos['emocion'].unique()
+        fig = px.bar(df_sentimientos, x='decada', y='porcentaje',
+                     color='emocion', barmode='group',
+                     title='Evolución de Sentimientos en Hip-Hop por Década',
+                     labels={'decada': 'Década', 'porcentaje': 'Porcentaje (%)', 'emocion': 'Emoción'})
 
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-        x = range(len(decadas))
-        width = 0.8 / len(emociones)
-
-        for i, emocion in enumerate(emociones):
-            datos = df_sentimientos[df_sentimientos['emocion'] == emocion]
-            valores = [
-                datos[datos['decada'] == d]['porcentaje'].values[0] if len(datos[datos['decada'] == d]) > 0 else 0 for d
-                in decadas]
-            ax.bar([pos + width * i for pos in x], valores, width, label=emocion)
-
-        ax.set_xlabel('Década', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Porcentaje (%)', fontsize=12, fontweight='bold')
-        ax.set_title('Evolución de Sentimientos en Hip-Hop por Década', fontsize=14, fontweight='bold')
-        ax.set_xticks([pos + width * len(emociones) / 2 for pos in x])
-        ax.set_xticklabels(decadas)
-        ax.legend()
-        ax.grid(axis='y', alpha=0.3, linestyle='--')
-        plt.tight_layout()
-        plt.show()
+        fig.update_layout(xaxis_title='Década', yaxis_title='Porcentaje (%)', height=500)
+        return fig

@@ -1,5 +1,6 @@
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 from collections import Counter
 import spacy
 
@@ -15,13 +16,14 @@ class AnalisisMorfologico:
         print("Procesando corpus...")
 
         for idx, row in self.corpus.iterrows():
-            doc = self.nlp(row['text'][:512]) #Toma solo los primeros 512 caracteres de la letra
+            doc = self.nlp(row['text'][:512])  # Toma solo los primeros 512 caracteres de la letra
 
-                #Diccionario
+            # Diccionario
             self.resultados.append({
                 'genero': row['Genre'],
                 'año': row['Release Date'],
-                'pos_tags': [t.pos_ for t in doc if not t.is_punct and not t.is_space], #Exceptúa espacios y puntuaciones
+                'pos_tags': [t.pos_ for t in doc if not t.is_punct and not t.is_space],
+                # Exceptúa espacios y puntuaciones
                 'fine_tags': [t.tag_ for t in doc if not t.is_punct and not t.is_space],
                 'pronombres': [t.text.lower() for t in doc if t.pos_ == 'PRON'],
                 'tokens': [t for t in doc if not t.is_punct and not t.is_space]
@@ -50,19 +52,22 @@ class AnalisisMorfologico:
         for pos, count in pos_counter.most_common():
             print(f"{pos:<10} | {count:>10,} | {count / total:>6.2%}")
 
-        # 4. Gráfico de Barras
+        # 4. Gráfico con Plotly
         ordenado = pos_counter.most_common()
-        plt.figure(figsize=(10, 5))
-        plt.bar([x[0] for x in ordenado], [x[1] for x in ordenado], color='skyblue', edgecolor='black')
-        plt.title(f"Frecuencia POS - {titulo}")
-        plt.xticks(rotation=45)
-        plt.show()
+        df_pos = pd.DataFrame(ordenado, columns=['POS', 'Frecuencia'])
+
+        fig = px.bar(df_pos, x='POS', y='Frecuencia',
+                     title=f"Frecuencia POS - {titulo}")
+        fig.update_traces(marker_color='skyblue', marker_line_color='black', marker_line_width=1.5)
+        fig.update_layout(xaxis_title='POS', yaxis_title='Frecuencia')
+
+        return fig
+
     # ============================================
     # 2. MÉTRICAS DERIVADAS
     # ============================================
     def calcular_metricas_derivadas(self, genero_objetivo=None):
         from collections import Counter
-        import matplotlib.pyplot as plt
 
         # 1. Filtrar datos por género (si no se pasa género, usa todos)
         datos = [r for r in self.resultados if not genero_objetivo or r['genero'] == genero_objetivo]
@@ -104,16 +109,21 @@ class AnalisisMorfologico:
         print(f"  Densidad léxica:           {(sust + verb + adj + adv) / total:.2%}")
         print(f"  Complejidad sintáctica:    {verb / total:.2%}")
 
-        # 5. Gráfico horizontal
+        # 5. Gráfico con Plotly
         cats = ['Sustantivos', 'Verbos', 'Adjetivos', 'Adverbios', 'Pronombres', 'Determinantes']
         vals = [sust, verb, adj, adv, pron, det]
 
-        plt.figure(figsize=(10, 6))
-        plt.barh(cats, vals, color=plt.cm.Set3(range(len(cats))), edgecolor='black')
-        plt.title(f'Distribución Morfológica - {titulo}', fontweight='bold')
-        plt.grid(axis='x', alpha=0.3)
-        plt.tight_layout()
-        plt.show()
+        df_metricas = pd.DataFrame({'Categoría': cats, 'Frecuencia': vals})
+
+        fig = px.bar(df_metricas, y='Categoría', x='Frecuencia',
+                     orientation='h',
+                     title=f'Distribución Morfológica - {titulo}',
+                     color='Frecuencia',
+                     color_continuous_scale='rainbow')
+        fig.update_traces(marker_line_color='black', marker_line_width=1.5)
+        fig.update_layout(xaxis_title='Frecuencia', yaxis_title='Categoría')
+
+        return fig
 
     # ============================================
     # 3. ANÁLISIS DE PRONOMBRES
@@ -150,19 +160,20 @@ class AnalisisMorfologico:
         print(f"  {gen1.capitalize():<10}: 1ª pers {pers1[0]:,}, 2ª pers {pers1[1]:,}, 3ª pers {pers1[2]:,}")
         print(f"  {gen2.capitalize():<10}: 1ª pers {pers2[0]:,}, 2ª pers {pers2[1]:,}, 3ª pers {pers2[2]:,}")
 
-        # --- GRÁFICO COMPARATIVO ---
-        fig, ax = plt.subplots(figsize=(10, 6))
-        x = range(3)
-        labels = ['1ª Persona', '2ª Persona', '3ª Persona']
+        # --- GRÁFICO CON PLOTLY ---
+        df_pron = pd.DataFrame({
+            'Persona': ['1ª Persona', '2ª Persona', '3ª Persona'] * 2,
+            'Frecuencia': pers1 + pers2,
+            'Género': [gen1.upper()] * 3 + [gen2.upper()] * 3
+        })
 
-        ax.bar([i - 0.2 for i in x], pers1, width=0.4, label=gen1.upper(), color='#e74c3c', edgecolor='black')
-        ax.bar([i + 0.2 for i in x], pers2, width=0.4, label=gen2.upper(), color='#3498db', edgecolor='black')
+        fig = px.bar(df_pron, x='Persona', y='Frecuencia',
+                     color='Género', barmode='group',
+                     title=f"Comparación de Pronombres: {gen1.upper()} vs {gen2.upper()}",
+                     color_discrete_map={gen1.upper(): '#e74c3c', gen2.upper(): '#3498db'})
+        fig.update_traces(marker_line_color='black', marker_line_width=1.5)
 
-        ax.set_xticks(x)
-        ax.set_xticklabels(labels)
-        ax.set_title(f"Comparación de Pronombres: {gen1.upper()} vs {gen2.upper()}")
-        ax.legend()
-        plt.show()
+        return fig
 
     # ============================================
     # 4. PATRONES ESPECÍFICOS DEL GÉNERO
@@ -182,18 +193,18 @@ class AnalisisMorfologico:
         vals1 = [(c1[p] / t1 * 100) if t1 > 0 else 0 for p in top_pos]
         vals2 = [(c2[p] / t2 * 100) if t2 > 0 else 0 for p in top_pos]
 
-        # 4. Crear el Gráfico
-        x = range(len(top_pos))
-        plt.figure(figsize=(12, 6))
+        # 4. Crear Gráfico con Plotly
+        df_patrones = pd.DataFrame({
+            'POS': top_pos * 2,
+            'Porcentaje': vals1 + vals2,
+            'Género': [gen1.upper()] * 10 + [gen2.upper()] * 10
+        })
 
-        plt.bar([i - 0.2 for i in x], vals1, width=0.4, label=gen1.upper(), color='#e74c3c', edgecolor='black')
-        plt.bar([i + 0.2 for i in x], vals2, width=0.4, label=gen2.upper(), color='#3498db', edgecolor='black')
+        fig = px.bar(df_patrones, x='POS', y='Porcentaje',
+                     color='Género', barmode='group',
+                     title=f'Patrones POS: {gen1.upper()} vs {gen2.upper()}',
+                     color_discrete_map={gen1.upper(): '#e74c3c', gen2.upper(): '#3498db'})
+        fig.update_traces(marker_line_color='black', marker_line_width=1.5)
+        fig.update_layout(yaxis_title='Porcentaje (%)', xaxis_title='POS')
 
-        plt.title(f'Patrones POS: {gen1.upper()} vs {gen2.upper()}', fontweight='bold')
-        plt.ylabel('Porcentaje (%)')
-        plt.xticks(x, top_pos)
-        plt.legend()
-        plt.grid(axis='y', alpha=0.3)
-        plt.tight_layout()
-        plt.show()
-
+        return fig
