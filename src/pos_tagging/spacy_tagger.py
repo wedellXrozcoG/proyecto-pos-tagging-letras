@@ -42,7 +42,7 @@ from preprocessorEDA import preprocesador
 class pos_spacy(preprocesador):
     def __init__(self, df):
         super().__init__(df)
-
+        self.nlp = spacy.load("en_core_web_sm")
 
     def unica_spacy(self, columna):
         # Procesar la oración con Spacy
@@ -66,7 +66,6 @@ class pos_spacy(preprocesador):
         print("=" * 60 + "\n")
 
         # CREAR EL SAMPLE: Elegimos n_sample filas al azar
-        # Usamos random_state para que si se corre de nuevo, salgan las mismas canciones
         dataset_reducido = self.df[columna].sample(n=n_sample, random_state=42)
 
         for i, sent in enumerate(dataset_reducido):
@@ -93,14 +92,12 @@ class pos_spacy(preprocesador):
     def multiples_spacyF2(self, columna, batch_size: int = 2000):
         resultados = []
 
-        # CORRECCIÓN: Definimos 'textos' para que len(textos) no de error
         textos = self.df[columna].astype(str)
 
         # tqdm envuelve al generador y muestra el progreso
-        # CORRECCIÓN: Pasamos 'textos' al generador
         generador = nlp.pipe(textos, batch_size=batch_size)
 
-        # CORRECCIÓN: Usamos len(textos) que ahora ya existe
+        #Usamos len(textos) que ahora ya existe
         for doc in tqdm(generador, total=len(textos), desc="Procesando"):
             tokens_del_texto = []
 
@@ -116,12 +113,11 @@ class pos_spacy(preprocesador):
     def auto_grafico_pos_total(self, col_txt, col_exp):
         print(f"📊 Generando gráfico total basado en '{col_exp}'...")
 
-        # 1. Expandir la columna 'pos_tags' (que ya debe existir en self.df)
+        # 1. Expandir la columna 'pos_tags'
         # Cada fila ahora será un token individual
         df_tokens = self.df.explode('pos_tags')
 
-        # 2. Extraer el TAG (posicion 2 de la tupla: (palabra, pos, tag))
-        # Usamos una función lambda robusta para evitar errores si hay nulos
+        # 2. Extraer el TAG
         df_tokens['tag_especifico'] = df_tokens['pos_tags'].apply(
             lambda x: x[2] if isinstance(x, list) or isinstance(x, tuple) else None
         )
@@ -132,7 +128,6 @@ class pos_spacy(preprocesador):
         df_filtrado = df_tokens[df_tokens['tag_especifico'].isin(top_5_idx)]
 
         # 4. Crear tabla cruzada para el apilado
-        # Como 'Explicit' es binaria (0/1), la mapeamos para que el gráfico se entienda mejor
         tabla = pd.crosstab(df_filtrado['tag_especifico'], df_filtrado[col_exp]).loc[top_5_idx]
         tabla.columns = ['No Explícita (0)', 'Explícita (1)']
 
@@ -193,12 +188,32 @@ class pos_spacy(preprocesador):
         latencia = (segundos_totales / total_canciones) * 1000
 
         # 3. Imprimimos el reporte de rendimiento
-        print(f"\n✅ ¡Proceso finalizado!")
-        print(f"📊 --- MÉTRICAS DE RENDIMIENTO ---")
+        print(f"\n¡Proceso finalizado!")
+        print(f"--- MÉTRICAS DE RENDIMIENTO ---")
         print(f"Tiempo total: {minutos} min {segundos_restantes:.2f} seg")
         print(f"Velocidad: {velocidad:.2f} canciones/seg") # Velocidad = Numero total de canciones/segundos totales
         print(f"Latencia: {latencia:.2f} ms por canción") # Latencia = (segundos totales / total de canciones)* 1000 milisegundos
 
         return
 
+    def pipeline_completo(self, columna, max_registros=None):
+        """Procesa el pipeline completo de spaCy."""
+        # Limitar registros
+        textos = self.df[columna].head(max_registros).astype(str).tolist()  # ← self.df
 
+        # Procesar
+        filas = []
+        for cancion_id, doc in enumerate(tqdm(self.nlp.pipe(textos), total=len(textos)), start=1):  # ← self.nlp
+            for token in doc:
+                filas.append({
+                    'cancion_id': cancion_id,
+                    'token': token.text,  # 1. TOKENIZACIÓN
+                    'pos': token.pos_,    # 2. ETIQUETADO POS
+                    'tag': token.tag_,    #    ETIQUETADO POS (fino)
+                    'is_stopword': token.is_stop, # 3. STOPWORDS
+                    'entity': token.ent_type_,    # 4. NER
+                    'lower': token.lower_, # 5. Mayúsculas/minúsculas
+                    'lemma': token.lemma_, # 6. LEMATIZACIÓN
+                })
+
+        return pd.DataFrame(filas)

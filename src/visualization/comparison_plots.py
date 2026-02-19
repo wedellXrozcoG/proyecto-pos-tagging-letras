@@ -1,9 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..')))
 
+from src.pos_tagging.spacy_tagger import pos_spacy
 
-class POSVisualizer:
+class POSVisualizer(pos_spacy):
     def __init__(self, filepath):
         self.df = pd.read_csv(filepath, sep=';')
 
@@ -47,7 +50,7 @@ class POSVisualizer:
         nltk_total = len(self.df['nltk_tag'])
         spacy_total = self.df['spacy_pos'].notna().sum()
 
-        print("📊 MÉTRICAS COMPARATIVAS")
+        print("MÉTRICAS COMPARATIVAS")
         print("=" * 50)
         print(f"Total tokens NLTK:  {nltk_total:,}")
         print(f"Total tokens Spacy: {spacy_total:,}")
