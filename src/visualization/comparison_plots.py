@@ -1,12 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from collections import Counter
+import sys, os
+sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..')))
 
+from src.pos_tagging.spacy_tagger import pos_spacy
 
-class POSVisualizer:
-    def __init__(self, filepath):
-        self.df = pd.read_csv(filepath, sep=';')
-
+class POSVisualizer(pos_spacy):
     def comparar_distribucion(self):
         # Contar tags
         nltk_counts = Counter(self.df['nltk_tag'])
