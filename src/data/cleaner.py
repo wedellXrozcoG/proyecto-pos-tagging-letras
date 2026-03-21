@@ -23,13 +23,11 @@ class DataCleaner:
 
         # 4. Muestreo balanceado: 5000 hip-hop + 5000 pop
         hip_hop_corpus = self.corpus[self.corpus['Genre'] == 'hip hop']
-        pop_corpus = self.corpus[self.corpus['Genre'] == 'pop']
+        pop_corpus     = self.corpus[self.corpus['Genre'] == 'pop']
 
-        # Tomar 5000 de cada uno (o todos si hay menos)
         hip_hop_sample = hip_hop_corpus.sample(n=min(len(hip_hop_corpus), 5000), random_state=42)
-        pop_sample = pop_corpus.sample(n=min(len(pop_corpus), 5000), random_state=42)
+        pop_sample     = pop_corpus.sample(n=min(len(pop_corpus), 5000), random_state=42)
 
-        # Combinar
         self.corpus = pd.concat([hip_hop_sample, pop_sample], ignore_index=True)
 
         print(f"Muestra final:")
@@ -37,17 +35,23 @@ class DataCleaner:
         print(f"Pop: {len(pop_sample):,}")
         print(f"Total: {len(self.corpus):,}\n")
 
-        # 5. Seleccionar columnas necesarias
-        self.corpus = self.corpus[['text', 'emotion', 'Release Date', 'Genre', 'Explicit', 'Popularity']]
+        # 5. Seleccionar columnas necesarias — se agrega Artist(s) y song
+        self.corpus = self.corpus[['song', 'Artist(s)', 'text', 'emotion', 'Release Date', 'Genre', 'Explicit', 'Popularity']]
 
-        # 6. Limpieza de texto
+        # 6. Renombrar columnas
+        self.corpus = self.corpus.rename(columns={'Artist(s)': 'artist'})
+
+        # 7. Reemplazar nulos con "Desconocido"
+        self.corpus = self.corpus.fillna('Desconocido')
+
+        # 8. Limpieza de texto
         print("Limpiando texto...")
         self.corpus['text'] = self.corpus['text'].apply(self.limpiar_texto)
 
-        # 7. Eliminar filas con texto vacío o nulo después de limpiar
+        # 9. Eliminar filas con texto vacío o nulo después de limpiar
         self.corpus = self.corpus[self.corpus['text'].notna() & (self.corpus['text'].str.len() > 0)]
 
-        # 8. Guardar CSV
+        # 10. Guardar CSV
         self.corpus.to_csv("../../data/processed/spotify_clean02.csv", index=False, sep=';')
         print(f"✅ CSV guardado con {len(self.corpus)} filas y texto limpio")
 

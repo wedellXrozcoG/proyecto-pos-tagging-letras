@@ -39,7 +39,7 @@ def insertar_cancion(col, titulo, artista, genero, letra,
         "fecha_recopilacion": datetime.utcnow(),
         "pos_tags":           pos_tags or {},
         "embeddings":         {},
-        "metricas": metricas or { # <-- Usamos las métricas calculadas
+        "metricas": metricas or {
             "num_palabras": 0,
             "densidad_lexica": 0.0,
             "ratio_sustantivos_verbos": 0.0
@@ -50,29 +50,22 @@ def insertar_cancion(col, titulo, artista, genero, letra,
 
 # ---Etiquetas spacy---
 def obtener_pos_tags_spacy(texto, nlp_model):
-
     if not texto or texto == "Desconocido":
         return []
 
     doc = nlp_model(texto)
-    # Lista de etiquetas para esta canción específica
     tags = [[token.text, token.pos_] for token in doc if not token.is_stop]
     return tags
 
 # ---Etiquetas NLTK---
 def obtener_pos_tags_nltk(texto):
-
     if not texto or texto == "Desconocido":
         return []
 
-    # 1. Tokenización
-    tokens = word_tokenize(texto)
-    # 2. Etiquetado POS
-    pos_tags = pos_tag(tokens)
-    # 3. Limpieza eliminando puntuación
+    tokens    = word_tokenize(texto)
+    pos_tags  = pos_tag(tokens)
     puntuacion = set(string.punctuation)
     tags_limpios = [[word, tag] for word, tag in pos_tags if word not in puntuacion]
-
     return tags_limpios
 
 
@@ -80,15 +73,11 @@ def calcular_metricas_nlp(tags_spacy):
     if not tags_spacy:
         return {"num_palabras": 0, "densidad_lexica": 0.0, "ratio_sustantivos_verbos": 0.0}
 
-    total_tokens = len(tags_spacy)
-
-    # Definimos qué etiquetas se consideran 'palabras con contenido' (Content Words)
-    content_pos = {'NOUN', 'VERB', 'ADJ', 'ADV', 'PROPN'}
-
-    # Contadores
+    total_tokens    = len(tags_spacy)
+    content_pos     = {'NOUN', 'VERB', 'ADJ', 'ADV', 'PROPN'}
     palabras_contenido = 0
-    sustantivos = 0
-    verbos = 0
+    sustantivos     = 0
+    verbos          = 0
 
     for token, pos in tags_spacy:
         if pos in content_pos:
@@ -98,7 +87,6 @@ def calcular_metricas_nlp(tags_spacy):
         if pos == 'VERB':
             verbos += 1
 
-    # Cálculos finales
     densidad = palabras_contenido / total_tokens if total_tokens > 0 else 0
     ratio_sv = sustantivos / verbos if verbos > 0 else sustantivos
 
@@ -108,40 +96,34 @@ def calcular_metricas_nlp(tags_spacy):
         "ratio_sustantivos_verbos": round(ratio_sv, 2)
     }
 
-def migrar_csv_a_mongo(ruta_csv, col, genero_col="Genre", letra_col="text"):
 
-    # Usamos sep=';' porque vimos que tu archivo viene así
-    df = pd.read_csv(ruta_csv, sep=';').fillna("")
+def migrar_csv_a_mongo(ruta_csv, col, genero_col="Genre", letra_col="text"):
+    df = pd.read_csv(ruta_csv, sep=';').fillna("Desconocido")
     insertados = 0
 
     for i, row in df.iterrows():
         letra_cancion = str(row.get(letra_col, ''))
-        # --- Procesamiento NLTK ---
-        mis_tags_nltk = obtener_pos_tags_nltk(letra_cancion)
 
-        # --- Procesamiento SPACY ---
+        mis_tags_nltk  = obtener_pos_tags_nltk(letra_cancion)
         mis_tags_spacy = obtener_pos_tags_spacy(letra_cancion, nlp)
+        res_metricas   = calcular_metricas_nlp(mis_tags_spacy)
 
-        res_metricas = calcular_metricas_nlp(mis_tags_spacy)
-
-        titulo_val = f"Track_{str(row.get(genero_col))}_{i}" # Al no tener titulo de la cancion se agregro un consecutivo
-        artista_val = "Desconocido"  # Un nombre fijo en este caso para el csv
-        genero_val = str(row.get(genero_col, "Desconocido"))
-        anio_val = str(row.get('Release Date', 'N/A'))
+        titulo_val  = str(row.get('song', f"Track_{str(row.get(genero_col))}_{i}"))
+        artista_val = str(row.get('artist', 'Desconocido'))
+        genero_val  = str(row.get(genero_col, 'Desconocido'))
+        anio_val    = str(row.get('Release Date', 'Desconocido'))
 
         _id = insertar_cancion(
             col,
-            titulo=titulo_val,
-            artista=artista_val,
-            genero=genero_val,
-            letra=letra_cancion,
-            anio=anio_val,
-            fuente="csv",
-            pos_tags={
-                "nltk": mis_tags_nltk,
-                "spacy": mis_tags_spacy
-            },
-            metricas=res_metricas
+            titulo     = titulo_val,
+            artista    = artista_val,
+            genero     = genero_val,
+            letra      = letra_cancion,
+            anio       = anio_val,
+            fuente     = "csv",
+            url_fuente = "https://www.kaggle.com/datasets/devdope/900k-spotify?select=spotify_dataset.csv",
+            pos_tags   = {"nltk": mis_tags_nltk, "spacy": mis_tags_spacy},
+            metricas   = res_metricas
         )
         if _id:
             insertados += 1
