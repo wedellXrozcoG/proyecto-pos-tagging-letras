@@ -1,5 +1,3 @@
-# ---db_manager.py - Conexión y operaciones con MongoDB---
-
 from pymongo import MongoClient
 from datetime import datetime
 import pandas as pd
@@ -130,3 +128,65 @@ def migrar_csv_a_mongo(ruta_csv, col, genero_col="Genre", letra_col="text"):
 
     print(f"Migradas {insertados} canciones nuevas a MongoDB.")
     return
+
+
+# CONSULTAS A MONGODB
+def filtrar_por_genero(col, genero):
+    resultados = list(col.find({"genero": genero}, {"_id": 0}))
+    print(f"\n Canciones de género '{genero}': {len(resultados)}")
+    for c in resultados[:3]:
+        print(f"   - {c.get('titulo')} — {c.get('artista')} ({c.get('anio')})")
+    if len(resultados) > 3:
+        print(f"   ... y {len(resultados) - 3} más")
+    return resultados
+
+def filtrar_por_anio(col, anio_min, anio_max=None):
+    if anio_max:
+        query = {"anio": {"$gte": str(anio_min), "$lte": str(anio_max)}}
+        rango = f"{anio_min} - {anio_max}"
+    else:
+        query = {"anio": str(anio_min)}
+        rango = str(anio_min)
+    resultados = list(col.find(query, {"_id": 0}))
+    print(f"\n Canciones del período {rango}: {len(resultados)}")
+    for c in resultados[:3]:
+        print(f"   - {c.get('titulo')} — {c.get('artista')} ({c.get('anio')})")
+    if len(resultados) > 3:
+        print(f"   ... y {len(resultados) - 3} más")
+    return resultados
+
+def filtrar_por_fuente(col, fuente):
+    resultados = list(col.find({"fuente": fuente}, {"_id": 0}))
+    print(f"\n Canciones de fuente '{fuente}': {len(resultados)}")
+    for c in resultados[:3]:
+        print(f"   - {c.get('titulo')} — {c.get('artista')} ({c.get('genero')})")
+    if len(resultados) > 3:
+        print(f"   ... y {len(resultados) - 3} más")
+    return resultados
+
+def buscar_por_artista(col, artista):
+    resultados = list(col.find(
+        {"artista": {"$regex": artista, "$options": "i"}},
+        {"_id": 0}
+    ))
+    print(f"\n Canciones de '{artista}': {len(resultados)}")
+    for c in resultados[:3]:
+        print(f"   - {c.get('titulo')} ({c.get('anio')}) — {c.get('genero')}")
+    if len(resultados) > 3:
+        print(f"   ... y {len(resultados) - 3} más")
+    return resultados
+
+def resumen_por_genero(col):
+    pipeline = [
+        {"$group": {
+            "_id": "$genero",
+            "total_canciones": {"$sum": 1},
+            "fuentes": {"$addToSet": "$fuente"}
+        }},
+        {"$sort": {"total_canciones": -1}}
+    ]
+    resultados = list(col.aggregate(pipeline))
+    print("\n Resumen por género:")
+    for r in resultados:
+        print(f"   {r['_id']:15} → {r['total_canciones']:,} canciones | fuentes: {r['fuentes']}")
+    return resultados
