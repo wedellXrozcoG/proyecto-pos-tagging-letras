@@ -1,0 +1,22 @@
+/* Estilo para las pestañas (Tabs) */
+.nav-tabs .nav-link {
+    color: #ccc !important; /* Gris claro para las no seleccionadas */
+    border: none !important;
+    background-color: black !important;
+}
+
+/* LA SELECCIONADA: Fondo blanco, texto negro y borde morado abajo */
+.nav-tabs .nav-link.active {
+    background-color: white !important;
+    color: black !important;
+    border-bottom: 4px solid #6f42c1 !important;
+}
+
+.nav-tabs .nav-link:hover {
+    color: white !important;
+}
+
+/* Forzar que el contenedor de las pestañas sea negro */
+#tabs {
+    background-color: black !important;
+}

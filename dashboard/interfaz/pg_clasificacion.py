@@ -1,0 +1,65 @@
+# aquí se llama también el w2v (solo ejecución) Aquí va tanto bert como w2v
+
+import dash
+from dash import dcc, html, dash_table, callback, Input, Output, State
+import dash_bootstrap_components as dbc
+import gc
+from src.db_manager import get_collection
+from src.analisis_nlp.clasificadores.cls_bert import ClasificadorBert
+
+layout = dbc.Container([
+    dcc.Store(id='store-bert', storage_type='session'),
+
+    html.H2("Clasificación Multiclase", className="text-info mb-2"),
+    dbc.Button("Ejecutar Entrenamiento", id="btn-bert", color="danger", size="sm", className="mb-4"),
+
+    dcc.Loading(type="circle", children=[
+        html.Div(id="bert-display-area")  # Aquí metemos todo lo que se debe quedar fijo
+    ])
+], fluid=True)
+
+
+# CALLBACK 1: ENTRENAMIENTO
+@callback(
+    Output("store-bert", "data"),
+    Input("btn-bert", "n_clicks"),
+    prevent_initial_call=True
+)
+def entrenar_bert(n_clicks):
+    col = get_collection()
+    cls_obj = ClasificadorBert(col)
+    acc, tabla = cls_obj.obtener_reporte_para_dash()
+
+    del cls_obj
+    gc.collect()
+    return {'acc': acc, 'tabla': tabla}
+
+
+# CALLBACK 2: VISUALIZACIÓN PERSISTENTE
+@callback(
+    Output("bert-display-area", "children"),
+    Input("store-bert", "data")
+)
+def renderizar_bert(cache):
+    if cache is None:
+        return html.Div("Presione el botón para iniciar el entrenamiento.", className="text-muted text-center p-5")
+
+    cls_tool = ClasificadorBert(None)
+    df, fig = cls_tool.generar_componentes_visuales(cache)
+
+    return [
+        dbc.Alert(f"Accuracy BERT: {cache['acc']:.2%}", color="success", className="h4 text-center"),
+        dbc.Row([
+            dbc.Col(dash_table.DataTable(
+                data=cache['tabla'],
+                columns=[{"name": i, "id": i} for i in df.columns],
+                style_header={'backgroundColor': 'black', 'color': 'white'},
+                style_cell={'textAlign': 'center'}
+            ), width=5),
+            dbc.Col(dcc.Graph(figure=fig), width=7),
+        ])
+    ]
+
+
+
+#-----------------------------
