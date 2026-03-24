@@ -14,7 +14,7 @@ layout = dbc.Container([
     dbc.Button("Ejecutar Entrenamiento", id="btn-bert", color="danger", size="sm", className="mb-4"),
 
     dcc.Loading(type="circle", children=[
-        html.Div(id="bert-display-area")  # Aquí metemos todo lo que se debe quedar fijo
+        html.Div(id="bert-display-area")  # Aquí metemos lo que se debe quedar fijo
     ])
 ], fluid=True)
 
