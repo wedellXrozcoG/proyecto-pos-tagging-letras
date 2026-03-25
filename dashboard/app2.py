@@ -2,7 +2,7 @@
 import dash
 import dash_bootstrap_components as dbc
 from dash import html, Input, Output
-from interfaz import pg_clasificacion, pg_clustering, pg_tsne
+from interfaz import pg_clasificacion, pg_clustering, pg_tsne, pg_busqueda
 
 app = dash.Dash(
     __name__,
@@ -88,7 +88,7 @@ def render(tab):
     elif tab == "tab-tsne":
         return pg_tsne.layout
     elif tab == "bus-sem":
-        return "proximamenteee"
+        return pg_busqueda.layout
 
 
 if __name__ == "__main__":
