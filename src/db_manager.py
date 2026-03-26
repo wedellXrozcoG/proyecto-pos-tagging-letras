@@ -23,7 +23,7 @@ def insertar_cancion(col, titulo, artista, genero, letra,
                      idioma="ENG", fuente="scraping", url_fuente="",
                      anio=None, pos_tags=None, metricas=None):
     if col.find_one({"titulo": titulo, "artista": artista}):
-        return None  # ya existe, no duplicar
+        return None
 
     doc = {
         "titulo":             titulo or "Desconocido",
