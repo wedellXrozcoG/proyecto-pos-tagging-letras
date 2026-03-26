@@ -6,6 +6,8 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+import plotly.express as px
+import pandas as pd
 
 # Funcion que hace limpieza en caso de ser necesario
 def limpieza_para_word2vec(texto):
@@ -199,53 +201,58 @@ def actualizar_embeddings_mongo(coleccion, modelo):
 
 # --Funcion para evaluar entre distintas palabras cuales tiene relacion/aproximidad--
 def graficar_semantica_word2vec(modelo, grupos_semanticos, titulo="Relaciones Semánticas"):
-
-    # 1. Configuración de colores (puedes añadir más si tienes más grupos)
-    colores_lista = ["#e74c3c", "#3498db", "#f39c12", "#2ecc71", "#9b59b6", "#1abc9c", "#34495e"]
-    colores = {cat: colores_lista[i % len(colores_lista)] for i, cat in enumerate(grupos_semanticos.keys())}
-
     palabras_finales = []
     vectores_finales = []
     categorias_finales = []
 
-    # 2. Extracción de vectores
+    # 1. Extracción de vectores (Igual que antes)
     for categoria, palabras in grupos_semanticos.items():
         for p in palabras:
             if p in modelo.wv:
                 palabras_finales.append(p)
                 vectores_finales.append(modelo.wv[p])
                 categorias_finales.append(categoria)
-            else:
-                print(f"Advertencia: '{p}' no encontrada en el vocabulario.")
 
     if not vectores_finales:
-        print("Error: No se encontraron palabras del diccionario en el modelo.")
-        return
+        print("Error: No se encontraron palabras en el modelo.")
+        return None
 
-    # 3. Reducción de dimensiones
+    # 2. Reducción de dimensiones con t-SNE
     X = np.array(vectores_finales)
-    # Perplexity ajustada al tamaño de los datos
     perp = min(5, len(X) - 1)
     tsne = TSNE(n_components=2, random_state=42, perplexity=perp, init='pca', learning_rate='auto')
     X_2d = tsne.fit_transform(X)
 
-    # 4. Construcción del gráfico
-    plt.figure(figsize=(12, 8))
+    # 3. Crear un DataFrame para Plotly (Esto facilita mucho el manejo)
+    df_plot = pd.DataFrame({
+        'x': X_2d[:, 0],
+        'y': X_2d[:, 1],
+        'Palabra': palabras_finales,
+        'Categoría': categorias_finales
+    })
 
-    for cat in grupos_semanticos.keys():
-        indices = [i for i, c in enumerate(categorias_finales) if c == cat]
-        if not indices: continue
+    # 4. Construcción del gráfico interactivo
+    fig = px.scatter(
+        df_plot,
+        x='x',
+        y='y',
+        text='Palabra',  # Muestra el nombre al lado del punto
+        color='Categoría',  # Colorea por grupo semántico
+        title=titulo,
+        hover_data={'x': False, 'y': False, 'Palabra': True, 'Categoría': True},  # Qué ver al pasar el mouse
+        template="plotly_white"
+    )
 
-        plt.scatter(X_2d[indices, 0], X_2d[indices, 1],
-                    c=colores[cat], label=cat, s=180, edgecolors='black', alpha=0.8)
+    # Ajustes estéticos
+    fig.update_traces(
+        textposition='top center',
+        marker=dict(size=12, line=dict(width=1, color='DarkSlateGrey'))
+    )
 
-        for i in indices:
-            plt.annotate(palabras_finales[i], (X_2d[i, 0], X_2d[i, 1]),
-                         fontsize=10, fontweight='bold', xytext=(7, 3),
-                         textcoords='offset points')
+    fig.update_layout(
+        height=700,
+        legend_title_text='Categorías Semánticas',
+        font=dict(family="Arial", size=12)
+    )
 
-    plt.title(titulo, fontsize=16, fontweight='bold', pad=20)
-    plt.legend(title="Categorías", bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.grid(True, alpha=0.15, linestyle='--')
-    plt.tight_layout()
-    plt.show()
+    return fig
