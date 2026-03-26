@@ -58,7 +58,7 @@ class AnalizadorTSNEWord2Vec:
             hover_name='Cancion',
             hover_data=['Artista'],
             title="Proyección t-SNE: Separación Semántica de Géneros (Word2Vec)",
-            template="plotly_dark",  # Tema oscuro para diseño profesional
+            template="plotly_white",
             color_discrete_sequence=px.colors.qualitative.Vivid
         )
 
