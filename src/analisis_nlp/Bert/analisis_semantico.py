@@ -6,10 +6,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 class BuscadorSemantico:
-    """
-    Búsqueda semántica de canciones en inglés usando BERT [CLS].
-    Optimizado para 8GB de RAM.
-    """
 
     def __init__(self, col_mongo):
         self.col           = col_mongo
@@ -19,7 +15,7 @@ class BuscadorSemantico:
         self.model.eval()
 
     def _vectorizar_consulta(self, texto):
-        """Convierte la consulta en un vector de 768D usando BERT [CLS]."""
+        """Convierte la consulta en un vector de 768D"""
         inputs = self.tokenizer(
             texto, return_tensors="pt",
             padding=True, truncation=True, max_length=64
