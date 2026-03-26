@@ -19,7 +19,7 @@ def limpieza_para_word2vec(texto):
         if not token.is_stop  # Stopwords
            and not token.is_punct  # Quita puntos y comas
            and token.is_alpha  # Quita números/fechas
-           and len(token.text) > 2  # <--- NUEVO: Quita letras sueltas (deletreo)
+           and len(token.text) > 2  #  Quita letras sueltas (deletreo)
     ]
     return tokens
 
@@ -36,7 +36,7 @@ def modelos_CBOW_SKIPGRAM(corpus, size, window, sg, min_count, workers):
     return modelo
 
 
-# --Funcion para traer solo las letras de un genero o todo completo--
+# --Funcion para traer solo las letras de un genero o corpus completo--
 def obtener_corpus(data, genero_corpus=None):
     corpus = []
 
@@ -62,7 +62,7 @@ def exploracion_semantica(modelo_cbow, modelo_sg, genero, palabra, n):
     # Ejecución CBOW
     print(f"--- Resultados con CBOW ---")
     try:
-        vecinos_c = modelo_cbow.wv.most_similar(palabra, topn=n)
+        vecinos_c = modelo_cbow.wv.most_similar(palabra, topn=n) #most_similar() similitud del coseno
         for p, sim in vecinos_c:
             print(f"{p}: {sim:.4f}")
     except:
@@ -79,12 +79,14 @@ def exploracion_semantica(modelo_cbow, modelo_sg, genero, palabra, n):
     except:
         print(f"La palabra '{palabra}' no tiene coincidencias.")
 
+
+
 # --Funcion para realizar exploración de campos semánticos por género--
 def analogia_vectoriales(modelo_cbow, modelo_sg, a, b, c, top_n=3):
     print(f"Analogía(CBOW): {a} es a {b} como {c} es a...")
     try:
         # Positive son los que suman (b y c), negative el que resta (a)
-        resultados = modelo_cbow.wv.most_similar(positive=[b, c], negative=[a], topn=top_n)
+        resultados = modelo_cbow.wv.most_similar(positive=[b, c], negative=[a], topn=top_n) # Vector(b) - Vector(a) + Vector(c)
 
         for i, (palabra, sim) in enumerate(resultados):
             marcador = "  *" if i == 0 else "   "
@@ -96,7 +98,7 @@ def analogia_vectoriales(modelo_cbow, modelo_sg, a, b, c, top_n=3):
 
     print(f"Analogía(SKIP-GRAM): {a} es a {b} como {c} es a...")
     try:
-        resultados = modelo_sg.wv.most_similar(positive=[b, c], negative=[a], topn=top_n)
+        resultados = modelo_sg.wv.most_similar(positive=[b, c], negative=[a], topn=top_n) # Vector(b) - Vector(a) + Vector(c)
 
         for i, (palabra, sim) in enumerate(resultados):
             marcador = "  *" if i == 0 else "   "
@@ -168,7 +170,7 @@ def obtener_vector_promedio(letra, modelo):
     # Limpiamos la letra
     tokens = limpieza_para_word2vec(letra)
 
-    # Extraemos los vectores de las palabras que el modelo conoce
+    # Extraemos los vectores
     vectores = [modelo.wv[p] for p in tokens if p in modelo.wv]
 
     # Si hay vectores, promediamos si no, devolvemos lista vacía
@@ -186,7 +188,7 @@ def actualizar_embeddings_mongo(coleccion, modelo):
     contador = 0
     for cancion in canciones:
         # Llamamos a la función de cálculo
-        vector = obtener_vector_promedio(cancion.get("letra", ""), modelo)
+        vector = obtener_vector_promedio(cancion.get("letra", ""), modelo) #Llama la funcion anterior que tiene los vectores
 
         # Guardamos en la base de datos
         coleccion.update_one(
@@ -205,7 +207,7 @@ def graficar_semantica_word2vec(modelo, grupos_semanticos, titulo="Relaciones Se
     vectores_finales = []
     categorias_finales = []
 
-    # 1. Extracción de vectores (Igual que antes)
+    # Extracción de vectores
     for categoria, palabras in grupos_semanticos.items():
         for p in palabras:
             if p in modelo.wv:
@@ -223,7 +225,7 @@ def graficar_semantica_word2vec(modelo, grupos_semanticos, titulo="Relaciones Se
     tsne = TSNE(n_components=2, random_state=42, perplexity=perp, init='pca', learning_rate='auto')
     X_2d = tsne.fit_transform(X)
 
-    # 3. Crear un DataFrame para Plotly (Esto facilita mucho el manejo)
+    # Crear un DataFrame para Plotly
     df_plot = pd.DataFrame({
         'x': X_2d[:, 0],
         'y': X_2d[:, 1],
@@ -231,7 +233,7 @@ def graficar_semantica_word2vec(modelo, grupos_semanticos, titulo="Relaciones Se
         'Categoría': categorias_finales
     })
 
-    # 4. Construcción del gráfico interactivo
+    # Construcción del gráfico interactivo
     fig = px.scatter(
         df_plot,
         x='x',
@@ -239,7 +241,7 @@ def graficar_semantica_word2vec(modelo, grupos_semanticos, titulo="Relaciones Se
         text='Palabra',  # Muestra el nombre al lado del punto
         color='Categoría',  # Colorea por grupo semántico
         title=titulo,
-        hover_data={'x': False, 'y': False, 'Palabra': True, 'Categoría': True},  # Qué ver al pasar el mouse
+        hover_data={'x': False, 'y': False, 'Palabra': True, 'Categoría': True},  # Posición del mouse
         template="plotly_white"
     )
 
