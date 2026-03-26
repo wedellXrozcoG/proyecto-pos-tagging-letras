@@ -22,3 +22,4 @@ Reflexión 2: Me brindó una gran ayuda en la parte de migraciones, opciones par
 - Mejoras en la visualización de resultados y consultas: Se optimizaron los print y formatos de salida para facilitar la lectura e interpretación de los resultados. Mejora de consultas que se podrian realizar(categorías) y correciones criticas de funciones mal implementadas.
 - En vez de dejar que me trajera más cosas innecesarias de las que necesitaba, lo quitaba. Códigos o funciones que podían hacer que fuera más complicada la ejecución (por la capacidad computacional) tenía que bajar el alcance o si habían resultados poco satisfactorios adaptarlos 'métricas' para que diera una mejor salida.
 - Ayuda en la actualización estructura del Readme.md
+- Ayuda para el esquema de Mongodb
